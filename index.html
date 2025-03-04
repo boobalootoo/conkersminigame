@@ -47,6 +47,7 @@
                 restitution: 1,
                 density: 0.8,
                 friction: 0.02,
+                isStatic: false, // Ensure the conkers can move
                 render: {
                     sprite: {
                         texture: "conker.png", // Ensure conker.png is in your GitHub repository
@@ -80,7 +81,7 @@
 
         World.add(world, [ballA, ballB, stringA, stringB]);
 
-        // Mouse interaction - Enable dragging of conkers
+        // Enable dragging of conkers
         const mouse = Mouse.create(render.canvas);
         const mouseConstraint = MouseConstraint.create(engine, {
             mouse: mouse,
@@ -90,9 +91,12 @@
             }
         });
 
-        // Ensure conkers can be dragged
-        mouseConstraint.mouse.element.removeEventListener("mousewheel", mouseConstraint.mouse.mousewheel);
-        mouseConstraint.mouse.element.removeEventListener("DOMMouseScroll", mouseConstraint.mouse.mousewheel);
+        // Allow dragging by ensuring constraints are applied to moving bodies
+        Events.on(mouseConstraint, "startdrag", function(event) {
+            if (event.body === ballA || event.body === ballB) {
+                Matter.Body.setStatic(event.body, false); // Ensure it can move
+            }
+        });
 
         World.add(world, mouseConstraint);
         render.mouse = mouse;
