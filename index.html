@@ -19,7 +19,7 @@
 </head>
 <body>
     <script>
-        const { Engine, Render, Runner, World, Bodies, Constraint, Mouse, MouseConstraint, Events } = Matter;
+        const { Engine, Render, Runner, World, Bodies, Constraint, Mouse, MouseConstraint } = Matter;
 
         const engine = Engine.create();
         const { world } = engine;
@@ -40,7 +40,7 @@
 
         const startX = window.innerWidth / 2;
         const startY = 150;
-        const spacing = 100;
+        const spacing = 150;
 
         function createConker(x, y) {
             return Bodies.circle(x, y, 40, {
@@ -49,7 +49,7 @@
                 friction: 0.02,
                 render: {
                     sprite: {
-                        texture: "conker.png", // Make sure conker.png is in your GitHub repository
+                        texture: "conker.png", // Ensure conker.png is in your GitHub repository
                         xScale: 1,
                         yScale: 1
                     }
@@ -57,9 +57,9 @@
             });
         }
 
-        // Create two conkers with the image
-        const ballA = createConker(startX - spacing, startY + 200);
-        const ballB = createConker(startX + spacing, startY + 200);
+        // Create two conkers with images
+        const ballA = createConker(startX - spacing, startY + 250);
+        const ballB = createConker(startX + spacing, startY + 250);
 
         // Invisible constraints (strings)
         const stringA = Constraint.create({
@@ -80,7 +80,7 @@
 
         World.add(world, [ballA, ballB, stringA, stringB]);
 
-        // Mouse interaction
+        // Mouse interaction - Enable dragging of conkers
         const mouse = Mouse.create(render.canvas);
         const mouseConstraint = MouseConstraint.create(engine, {
             mouse: mouse,
@@ -89,6 +89,11 @@
                 render: { visible: false }
             }
         });
+
+        // Ensure conkers can be dragged
+        mouseConstraint.mouse.element.removeEventListener("mousewheel", mouseConstraint.mouse.mousewheel);
+        mouseConstraint.mouse.element.removeEventListener("DOMMouseScroll", mouseConstraint.mouse.mousewheel);
+
         World.add(world, mouseConstraint);
         render.mouse = mouse;
 
@@ -96,6 +101,7 @@
             min: { x: 0, y: 0 },
             max: { x: window.innerWidth, y: window.innerHeight }
         });
+
     </script>
 </body>
 </html>
