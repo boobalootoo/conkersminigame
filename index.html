@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conkers Minigame</title>
+    <title>Newton's Cradle (2 Balls)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         body {
@@ -15,11 +15,22 @@
         canvas {
             display: block;
         }
+        .impact-popup {
+            position: absolute;
+            color: white;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.5s ease-out;
+        }
     </style>
 </head>
 <body>
     <script>
-        const { Engine, Render, Runner, World, Bodies, Constraint, Mouse, MouseConstraint } = Matter;
+        const { Engine, Render, Runner, World, Bodies, Constraint, Mouse, MouseConstraint, Events } = Matter;
 
         const engine = Engine.create();
         const { world } = engine;
@@ -38,16 +49,17 @@
         const runner = Runner.create();
         Runner.run(runner, engine);
 
+        const ballRadius = 40;
         const startX = window.innerWidth / 2;
         const startY = 150;
-        const spacing = 150;
+        const spacing = 100;
+        const cracks = new Map();
 
-        function createConker(x, y) {
-            return Bodies.circle(x, y, 40, {
+        function createBall(x, y) {
+            return Bodies.circle(x, y, ballRadius, {
                 restitution: 1,
                 density: 0.8,
                 friction: 0.02,
-                isStatic: false, // Ensure the conkers can move
                 render: {
                     sprite: {
                         texture: "conker.png", // Ensure conker.png is in your GitHub repository
@@ -58,30 +70,14 @@
             });
         }
 
-        // Create two conkers with images
-        const ballA = createConker(startX - spacing, startY + 250);
-        const ballB = createConker(startX + spacing, startY + 250);
-
-        // Invisible constraints (strings)
-        const stringA = Constraint.create({
-            bodyA: ballA,
-            pointB: { x: startX - spacing, y: startY },
-            stiffness: 1,
-            length: 300,
-            render: { visible: false } // Hide default lines
-        });
-
-        const stringB = Constraint.create({
-            bodyA: ballB,
-            pointB: { x: startX + spacing, y: startY },
-            stiffness: 1,
-            length: 300,
-            render: { visible: false } // Hide default lines
-        });
-
+        const ballA = createBall(startX - spacing, startY + 200);
+        const ballB = createBall(startX + spacing, startY + 200);
+        
+        const stringA = Constraint.create({ bodyA: ballA, pointB: { x: startX - spacing, y: startY }, stiffness: 1, length: 300 });
+        const stringB = Constraint.create({ bodyA: ballB, pointB: { x: startX + spacing, y: startY }, stiffness: 1, length: 300 });
+        
         World.add(world, [ballA, ballB, stringA, stringB]);
 
-        // Enable dragging of conkers
         const mouse = Mouse.create(render.canvas);
         const mouseConstraint = MouseConstraint.create(engine, {
             mouse: mouse,
@@ -90,14 +86,6 @@
                 render: { visible: false }
             }
         });
-
-        // Allow dragging by ensuring constraints are applied to moving bodies
-        Events.on(mouseConstraint, "startdrag", function(event) {
-            if (event.body === ballA || event.body === ballB) {
-                Matter.Body.setStatic(event.body, false); // Ensure it can move
-            }
-        });
-
         World.add(world, mouseConstraint);
         render.mouse = mouse;
 
@@ -105,7 +93,6 @@
             min: { x: 0, y: 0 },
             max: { x: window.innerWidth, y: window.innerHeight }
         });
-
     </script>
 </body>
 </html>
