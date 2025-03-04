@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Newton's Cradle (2 Balls)</title>
+    <title>Conkers Minigame</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         body {
@@ -14,17 +14,6 @@
         }
         canvas {
             display: block;
-        }
-        .impact-popup {
-            position: absolute;
-            color: white;
-            font-size: 18px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 5px 10px;
-            border-radius: 5px;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            transition: opacity 0.5s ease-out;
         }
     </style>
 </head>
@@ -49,33 +38,49 @@
         const runner = Runner.create();
         Runner.run(runner, engine);
 
-        const ballRadius = 40;
         const startX = window.innerWidth / 2;
         const startY = 150;
         const spacing = 100;
-        const cracks = new Map();
 
-        function createBall(x, y, color) {
-            return Bodies.circle(x, y, ballRadius, {
+        function createConker(x, y) {
+            return Bodies.circle(x, y, 40, {
                 restitution: 1,
                 density: 0.8,
                 friction: 0.02,
                 render: {
-                    fillStyle: color,
-                    strokeStyle: 'black',
-                    lineWidth: 2
+                    sprite: {
+                        texture: "conker.png", // Make sure conker.png is in your GitHub repository
+                        xScale: 1,
+                        yScale: 1
+                    }
                 }
             });
         }
 
-        const ballA = createBall(startX - spacing, startY + 200, 'red');
-        const ballB = createBall(startX + spacing, startY + 200, 'blue');
-        
-        const stringA = Constraint.create({ bodyA: ballA, pointB: { x: startX - spacing, y: startY }, stiffness: 1, length: 300 });
-        const stringB = Constraint.create({ bodyA: ballB, pointB: { x: startX + spacing, y: startY }, stiffness: 1, length: 300 });
-        
+        // Create two conkers with the image
+        const ballA = createConker(startX - spacing, startY + 200);
+        const ballB = createConker(startX + spacing, startY + 200);
+
+        // Invisible constraints (strings)
+        const stringA = Constraint.create({
+            bodyA: ballA,
+            pointB: { x: startX - spacing, y: startY },
+            stiffness: 1,
+            length: 300,
+            render: { visible: false } // Hide default lines
+        });
+
+        const stringB = Constraint.create({
+            bodyA: ballB,
+            pointB: { x: startX + spacing, y: startY },
+            stiffness: 1,
+            length: 300,
+            render: { visible: false } // Hide default lines
+        });
+
         World.add(world, [ballA, ballB, stringA, stringB]);
 
+        // Mouse interaction
         const mouse = Mouse.create(render.canvas);
         const mouseConstraint = MouseConstraint.create(engine, {
             mouse: mouse,
@@ -86,71 +91,6 @@
         });
         World.add(world, mouseConstraint);
         render.mouse = mouse;
-
-        function createImpactPopup(x, y, impact) {
-            if (isNaN(impact)) return;
-            const popup = document.createElement('div');
-            popup.className = 'impact-popup';
-            popup.style.left = `${x}px`;
-            popup.style.top = `${y}px`;
-            popup.innerText = `Impact: ${impact.toFixed(2)}`;
-            document.body.appendChild(popup);
-            setTimeout(() => popup.style.opacity = '0', 500);
-            setTimeout(() => popup.remove(), 1000);
-        }
-
-        function addCrack(affectedBody, impactPoint, impactStrength) {
-            if (!cracks.has(affectedBody)) cracks.set(affectedBody, []);
-            
-            const localX = impactPoint.x - affectedBody.position.x;
-            const localY = impactPoint.y - affectedBody.position.y;
-            const depth = impactStrength / 100 * ballRadius; // Crack depth based on impact strength
-            const angle = Math.atan2(localY, localX);
-            
-            cracks.get(affectedBody).push({
-                x: localX,
-                y: localY,
-                depth: depth,
-                angle: angle
-            });
-        }
-
-        function drawCracks(ctx) {
-            cracks.forEach((crackList, body) => {
-                ctx.save();
-                ctx.translate(body.position.x, body.position.y);
-                ctx.strokeStyle = 'black';
-                ctx.lineWidth = 2;
-                
-                crackList.forEach(crack => {
-                    ctx.beginPath();
-                    ctx.moveTo(crack.x, crack.y);
-                    ctx.lineTo(
-                        crack.x - crack.depth * Math.cos(crack.angle),
-                        crack.y - crack.depth * Math.sin(crack.angle)
-                    );
-                    ctx.stroke();
-                });
-                ctx.restore();
-            });
-        }
-
-        Events.on(engine, "collisionStart", event => {
-            event.pairs.forEach(({ bodyA, bodyB, collision }) => {
-                const impact = collision.depth * 100 / ballRadius;
-                if (isNaN(impact)) return;
-                createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
-                
-                // Ensure the crack is only on the ball that got hit
-                let affectedBody = bodyB;
-                addCrack(affectedBody, collision.supports[0], impact);
-            });
-        });
-
-        Events.on(render, "afterRender", () => {
-            const ctx = render.context;
-            drawCracks(ctx);
-        });
 
         Render.lookAt(render, {
             min: { x: 0, y: 0 },
