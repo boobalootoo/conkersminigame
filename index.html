@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conkers Minigame</title>
+    <title>Newton's Cradle (2 Balls)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         body {
@@ -15,11 +15,22 @@
         canvas {
             display: block;
         }
+        .impact-popup {
+            position: absolute;
+            color: white;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.5s ease-out;
+        }
     </style>
 </head>
 <body>
     <script>
-        const { Engine, Render, Runner, World, Bodies, Constraint, Mouse, MouseConstraint } = Matter;
+        const { Engine, Render, Runner, World, Bodies, Constraint, Mouse, MouseConstraint, Events } = Matter;
 
         const engine = Engine.create();
         const { world } = engine;
@@ -38,12 +49,14 @@
         const runner = Runner.create();
         Runner.run(runner, engine);
 
+        const ballRadius = 40;
         const startX = window.innerWidth / 2;
         const startY = 150;
-        const spacing = 150;
+        const spacing = 100;
+        const cracks = new Map();
 
-        function createConker(x, y) {
-            return Bodies.circle(x, y, 40, {
+        function createBall(x, y) {
+            return Bodies.circle(x, y, ballRadius, {
                 restitution: 1,
                 density: 0.8,
                 friction: 0.02,
@@ -57,49 +70,41 @@
             });
         }
 
-        // Create two conkers with images
-        const ballA = createConker(startX - spacing, startY + 250);
-        const ballB = createConker(startX + spacing, startY + 250);
-
-        // Adjust constraint to attach at the top of the conker
-        const stringA = Constraint.create({
-            bodyA: ballA,
-            pointA: { x: 0, y: -60 }, // Attach the constraint near the top of the conker
-            pointB: { x: startX - spacing, y: startY },
-            stiffness: 0.9, // Allow some natural movement
-            length: 250, // Adjust string length
-            render: { visible: false } // Hide default constraint lines
-        });
-
-        const stringB = Constraint.create({
-            bodyA: ballB,
-            pointA: { x: 0, y: -60 }, // Attach the constraint near the top of the conker
-            pointB: { x: startX + spacing, y: startY },
-            stiffness: 0.9, // Allow some natural movement
-            length: 250, // Adjust string length
-            render: { visible: false } // Hide default constraint lines
-        });
-
+        const ballA = createBall(startX - spacing, startY + 200);
+        const ballB = createBall(startX + spacing, startY + 200);
+        
+        const stringA = Constraint.create({ bodyA: ballA, pointB: { x: startX - spacing, y: startY - 50 }, stiffness: 0.7, length: 200, render: { visible: false } });
+        const stringB = Constraint.create({ bodyA: ballB, pointB: { x: startX + spacing, y: startY - 50 }, stiffness: 0.7, length: 200, render: { visible: false } });
+        
         World.add(world, [ballA, ballB, stringA, stringB]);
 
-        // Enable dragging of conkers
         const mouse = Mouse.create(render.canvas);
         const mouseConstraint = MouseConstraint.create(engine, {
             mouse: mouse,
             constraint: {
-                stiffness: 0.5, // More control while dragging
+                stiffness: 0.2,
                 render: { visible: false }
             }
         });
-
         World.add(world, mouseConstraint);
         render.mouse = mouse;
+
+        Events.on(mouseConstraint, "startdrag", function(event) {
+            if (event.body === ballA || event.body === ballB) {
+                Matter.Body.setStatic(event.body, false); // Allow movement when dragged
+            }
+        });
+
+        Events.on(mouseConstraint, "enddrag", function(event) {
+            if (event.body === ballA || event.body === ballB) {
+                Matter.Body.setStatic(event.body, false); // Keep it dynamic after drag
+            }
+        });
 
         Render.lookAt(render, {
             min: { x: 0, y: 0 },
             max: { x: window.innerWidth, y: window.innerHeight }
         });
-
     </script>
 </body>
 </html>
