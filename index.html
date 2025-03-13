@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Newton's Cradle (2 Balls)</title>
+    <title>8-Bit Conkers Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         body {
@@ -55,26 +55,25 @@
         const spacing = 100;
         const cracks = new Map();
 
-        function createBall(x, y) {
+        function createBall(x, y, color) {
             return Bodies.circle(x, y, ballRadius, {
                 restitution: 1,
                 density: 0.8,
                 friction: 0.02,
                 render: {
-                    sprite: {
-                        texture: "conker.png", // Ensure conker.png is in your GitHub repository
-                        xScale: 1,
-                        yScale: 1
-                    }
+                    fillStyle: color,
+                    strokeStyle: 'black',
+                    lineWidth: 2
                 }
             });
         }
 
-        const ballA = createBall(startX - spacing, startY + 200);
-        const ballB = createBall(startX + spacing, startY + 200);
+        // Set both balls to brown
+        const ballA = createBall(startX - spacing, startY + 200, 'brown');
+        const ballB = createBall(startX + spacing, startY + 200, 'brown');
         
-        const stringA = Constraint.create({ bodyA: ballA, pointB: { x: startX - spacing, y: startY - 50 }, stiffness: 0.7, length: 200, render: { visible: false } });
-        const stringB = Constraint.create({ bodyA: ballB, pointB: { x: startX + spacing, y: startY - 50 }, stiffness: 0.7, length: 200, render: { visible: false } });
+        const stringA = Constraint.create({ bodyA: ballA, pointB: { x: startX - spacing, y: startY }, stiffness: 1, length: 300 });
+        const stringB = Constraint.create({ bodyA: ballB, pointB: { x: startX + spacing, y: startY }, stiffness: 1, length: 300 });
         
         World.add(world, [ballA, ballB, stringA, stringB]);
 
@@ -89,16 +88,68 @@
         World.add(world, mouseConstraint);
         render.mouse = mouse;
 
-        Events.on(mouseConstraint, "startdrag", function(event) {
-            if (event.body === ballA || event.body === ballB) {
-                Matter.Body.setStatic(event.body, false); // Allow movement when dragged
-            }
+        function createImpactPopup(x, y, impact) {
+            if (isNaN(impact)) return;
+            const popup = document.createElement('div');
+            popup.className = 'impact-popup';
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+            popup.innerText = `Impact: ${impact.toFixed(2)}`;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.style.opacity = '0', 500);
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function addCrack(affectedBody, impactPoint, impactStrength) {
+            if (!cracks.has(affectedBody)) cracks.set(affectedBody, []);
+            
+            const localX = impactPoint.x - affectedBody.position.x;
+            const localY = impactPoint.y - affectedBody.position.y;
+            const depth = impactStrength / 100 * ballRadius;
+            const angle = Math.atan2(localY, localX);
+            
+            cracks.get(affectedBody).push({
+                x: localX,
+                y: localY,
+                depth: depth,
+                angle: angle
+            });
+        }
+
+        function drawCracks(ctx) {
+            cracks.forEach((crackList, body) => {
+                ctx.save();
+                ctx.translate(body.position.x, body.position.y);
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                
+                crackList.forEach(crack => {
+                    ctx.beginPath();
+                    ctx.moveTo(crack.x, crack.y);
+                    ctx.lineTo(
+                        crack.x - crack.depth * Math.cos(crack.angle),
+                        crack.y - crack.depth * Math.sin(crack.angle)
+                    );
+                    ctx.stroke();
+                });
+                ctx.restore();
+            });
+        }
+
+        Events.on(engine, "collisionStart", event => {
+            event.pairs.forEach(({ bodyA, bodyB, collision }) => {
+                const impact = collision.depth * 100 / ballRadius;
+                if (isNaN(impact)) return;
+                createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
+                
+                let affectedBody = bodyB;
+                addCrack(affectedBody, collision.supports[0], impact);
+            });
         });
 
-        Events.on(mouseConstraint, "enddrag", function(event) {
-            if (event.body === ballA || event.body === ballB) {
-                Matter.Body.setStatic(event.body, false); // Keep it dynamic after drag
-            }
+        Events.on(render, "afterRender", () => {
+            const ctx = render.context;
+            drawCracks(ctx);
         });
 
         Render.lookAt(render, {
