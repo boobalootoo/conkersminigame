@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Swinging Conker</title>
+<title>Click and Drag Conker</title>
 <style>
   body {
     display: flex;
@@ -9,22 +9,17 @@
     align-items: center;
     height: 100vh;
     margin: 0;
-    background-color: #f0f0f0; /* Optional background color */
+    background-color: #f0f0f0;
   }
 
   #conker-container {
     position: relative;
-    transform-origin: top center; /* Anchor point for rotation */
-    animation: swing 2s linear infinite alternate; /* Swing animation */
+    transform-origin: top center;
+    cursor: grab; /* Change cursor on hover */
   }
 
   #conker-image {
-    display: block; /* Ensures image behaves correctly */
-  }
-
-  @keyframes swing {
-    0% { transform: rotate(-15deg); }
-    100% { transform: rotate(15deg); }
+    display: block;
   }
 </style>
 </head>
@@ -33,6 +28,37 @@
   <div id="conker-container">
     <img id="conker-image" src="conker.png" alt="Conker on a string">
   </div>
+
+  <script>
+    const conkerContainer = document.getElementById('conker-container');
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    conkerContainer.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      offsetX = e.clientX - conkerContainer.getBoundingClientRect().left;
+      offsetY = e.clientY - conkerContainer.getBoundingClientRect().top;
+      conkerContainer.style.cursor = 'grabbing'; // Change cursor while dragging
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      const x = e.clientX - offsetX;
+      const y = e.clientY - offsetY;
+
+      // Keep the top of the conker anchored (adjust as needed)
+      const topOffset = conkerContainer.getBoundingClientRect().height / 4; // Adjust the divisor for anchor point
+
+      conkerContainer.style.left = `${x}px`;
+      conkerContainer.style.top = `${y - topOffset}px`; // Adjust for anchor
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      conkerContainer.style.cursor = 'grab'; // Reset cursor
+    });
+  </script>
 
 </body>
 </html>
