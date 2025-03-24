@@ -1,64 +1,166 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Click and Drag Conker</title>
-<style>
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    background-color: #f0f0f0;
-  }
-
-  #conker-container {
-    position: relative;
-    transform-origin: top center;
-    cursor: grab; /* Change cursor on hover */
-  }
-
-  #conker-image {
-    display: block;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8-Bit Conkers Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            position: relative;
+        }
+        canvas {
+            display: block;
+        }
+        .impact-popup {
+            position: absolute;
+            color: white;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.5s ease-out;
+        }
+    </style>
 </head>
 <body>
+    <script>
+        const { Engine, Render, Runner, World, Bodies, Constraint, Mouse, MouseConstraint, Events } = Matter;
 
-  <div id="conker-container">
-    <img id="conker-image" src="conker.png" alt="Conker on a string">
-  </div>
+        const engine = Engine.create();
+        const { world } = engine;
 
-  <script>
-    const conkerContainer = document.getElementById('conker-container');
-    let isDragging = false;
-    let offsetX, offsetY;
+        const render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                wireframes: false,
+                background: '#222'
+            }
+        });
+        Render.run(render);
+        const runner = Runner.create();
+        Runner.run(runner, engine);
 
-    conkerContainer.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      offsetX = e.clientX - conkerContainer.getBoundingClientRect().left;
-      offsetY = e.clientY - conkerContainer.getBoundingClientRect().top;
-      conkerContainer.style.cursor = 'grabbing'; // Change cursor while dragging
-    });
+        const conkerImage = new Image();
+        conkerImage.src = 'conker.png'; // Make sure the image is in the same directory
 
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
+        conkerImage.onload = () => {
+            const ballWidth = conkerImage.width;
+            const ballHeight = conkerImage.height;
+            const startX = window.innerWidth / 2;
+            const startY = 150;
+            const spacing = 100;
+            const cracks = new Map();
 
-      const x = e.clientX - offsetX;
-      const y = e.clientY - offsetY;
+            function createBall(x, y) {
+                return Bodies.rectangle(x, y, ballWidth, ballHeight, {
+                    restitution: 1,
+                    density: 0.8,
+                    friction: 0.02,
+                    render: {
+                        texture: 'conker.png', // Use the image as a texture
+                        xScale: 1,
+                        yScale: 1
+                    }
+                });
+            }
 
-      // Keep the top of the conker anchored (adjust as needed)
-      const topOffset = conkerContainer.getBoundingClientRect().height / 4; // Adjust the divisor for anchor point
+            const ballA = createBall(startX - spacing, startY + 200);
+            const ballB = createBall(startX + spacing, startY + 200);
 
-      conkerContainer.style.left = `${x}px`;
-      conkerContainer.style.top = `${y - topOffset}px`; // Adjust for anchor
-    });
+            const stringA = Constraint.create({ bodyA: ballA, pointB: { x: startX - spacing, y: startY }, stiffness: 1, length: 300 });
+            const stringB = Constraint.create({ bodyA: ballB, pointB: { x: startX + spacing, y: startY }, stiffness: 1, length: 300 });
 
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-      conkerContainer.style.cursor = 'grab'; // Reset cursor
-    });
-  </script>
+            World.add(world, [ballA, ballB, stringA, stringB]);
 
+            const mouse = Mouse.create(render.canvas);
+            const mouseConstraint = MouseConstraint.create(engine, {
+                mouse: mouse,
+                constraint: {
+                    stiffness: 0.2,
+                    render: { visible: false }
+                }
+            });
+            World.add(world, mouseConstraint);
+            render.mouse = mouse;
+
+            function createImpactPopup(x, y, impact) {
+                if (isNaN(impact)) return;
+                const popup = document.createElement('div');
+                popup.className = 'impact-popup';
+                popup.style.left = `${x}px`;
+                popup.style.top = `${y}px`;
+                popup.innerText = `Impact: ${impact.toFixed(2)}`;
+                document.body.appendChild(popup);
+                setTimeout(() => popup.style.opacity = '0', 500);
+                setTimeout(() => popup.remove(), 1000);
+            }
+
+            function addCrack(affectedBody, impactPoint, impactStrength) {
+                if (!cracks.has(affectedBody)) cracks.set(affectedBody, []);
+
+                const localX = impactPoint.x - affectedBody.position.x;
+                const localY = impactPoint.y - affectedBody.position.y;
+                const depth = impactStrength / 100 * ballWidth / 2; // Adjust crack depth
+                const angle = Math.atan2(localY, localX);
+
+                cracks.get(affectedBody).push({
+                    x: localX,
+                    y: localY,
+                    depth: depth,
+                    angle: angle
+                });
+            }
+
+            function drawCracks(ctx) {
+                cracks.forEach((crackList, body) => {
+                    ctx.save();
+                    ctx.translate(body.position.x, body.position.y);
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 2;
+
+                    crackList.forEach(crack => {
+                        ctx.beginPath();
+                        ctx.moveTo(crack.x, crack.y);
+                        ctx.lineTo(
+                            crack.x - crack.depth * Math.cos(crack.angle),
+                            crack.y - crack.depth * Math.sin(crack.angle)
+                        );
+                        ctx.stroke();
+                    });
+                    ctx.restore();
+                });
+            }
+
+            Events.on(engine, "collisionStart", event => {
+                event.pairs.forEach(({ bodyA, bodyB, collision }) => {
+                    const impact = collision.depth * 100 / (ballWidth / 2); // Adjust impact calculation
+                    if (isNaN(impact)) return;
+                    createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
+
+                    let affectedBody = bodyB;
+                    addCrack(affectedBody, collision.supports[0], impact);
+                });
+            });
+
+            Events.on(render, "afterRender", () => {
+                const ctx = render.context;
+                drawCracks(ctx);
+            });
+
+            Render.lookAt(render, {
+                min: { x: 0, y: 0 },
+                max: { x: window.innerWidth, y: window.innerHeight }
+            });
+        }; // End of conkerImage.onload
+    </script>
 </body>
 </html>
