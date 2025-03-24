@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Swinging Conker</title>
+<style>
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0; /* Optional background color */
+  }
+
+  #conker-container {
+    position: relative;
+    transform-origin: top center; /* Anchor point for rotation */
+    animation: swing 2s linear infinite alternate; /* Swing animation */
+  }
+
+  #conker-image {
+    display: block; /* Ensures image behaves correctly */
+  }
+
+  @keyframes swing {
+    0% { transform: rotate(-15deg); }
+    100% { transform: rotate(15deg); }
+  }
+</style>
+</head>
+<body>
+
+  <div id="conker-container">
+    <img id="conker-image" src="conker.png" alt="Conker on a string">
+  </div>
+
+</body>
+</html>
