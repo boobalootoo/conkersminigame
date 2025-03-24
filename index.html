@@ -50,9 +50,11 @@
         Runner.run(runner, engine);
 
         const conkerImage = new Image();
-        conkerImage.src = 'conker.png'; // Make sure the image is in the same directory
+        conkerImage.src = 'conker.png';
 
         conkerImage.onload = () => {
+            console.log('Image loaded!'); //  Check if image is loaded
+
             const ballWidth = conkerImage.width;
             const ballHeight = conkerImage.height;
             const startX = window.innerWidth / 2;
@@ -61,23 +63,35 @@
             const cracks = new Map();
 
             function createBall(x, y) {
-                return Bodies.rectangle(x, y, ballWidth, ballHeight, {
+                const ball = Bodies.rectangle(x, y, ballWidth, ballHeight, {
                     restitution: 1,
                     density: 0.8,
                     friction: 0.02,
                     render: {
                         texture: 'conker.png',
                         xScale: 1,
-                        yScale: 1
+                        yScale: 1,
+                        origin: { x: 0.5, y: 0 }
                     }
                 });
+                return ball;
             }
 
-            const ballA = createBall(startX - spacing, startY + 200);
-            const ballB = createBall(startX + spacing, startY + 200);
+            const ballA = createBall(startX - spacing, startY);
+            const ballB = createBall(startX + spacing, startY);
 
-            const stringA = Constraint.create({ bodyA: ballA, pointB: { x: startX - spacing, y: startY }, stiffness: 1, length: 300 });
-            const stringB = Constraint.create({ bodyA: ballB, pointB: { x: startX + spacing, y: startY }, stiffness: 1, length: 300 });
+            const stringA = Constraint.create({
+                bodyA: ballA,
+                pointB: { x: startX - spacing, y: startY },
+                stiffness: 1,
+                length: 300
+            });
+            const stringB = Constraint.create({
+                bodyA: ballB,
+                pointB: { x: startX + spacing, y: startY },
+                stiffness: 1,
+                length: 300
+            });
 
             World.add(world, [ballA, ballB, stringA, stringB]);
 
@@ -109,7 +123,7 @@
 
                 const localX = impactPoint.x - affectedBody.position.x;
                 const localY = impactPoint.y - affectedBody.position.y;
-                const depth = impactStrength / 100 * ballWidth / 2; // Adjust crack depth
+                const depth = impactStrength / 100 * ballWidth / 2;
                 const angle = Math.atan2(localY, localX);
 
                 cracks.get(affectedBody).push({
@@ -142,7 +156,7 @@
 
             Events.on(engine, "collisionStart", event => {
                 event.pairs.forEach(({ bodyA, bodyB, collision }) => {
-                    const impact = collision.depth * 100 / (ballWidth / 2); // Adjust impact calculation
+                    const impact = collision.depth * 100 / (ballWidth / 2);
                     if (isNaN(impact)) return;
                     createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
 
@@ -160,7 +174,7 @@
                 min: { x: 0, y: 0 },
                 max: { x: window.innerWidth, y: window.innerHeight }
             });
-        }; // End of conkerImage.onload
+        };
     </script>
 </body>
 </html>
