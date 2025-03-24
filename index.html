@@ -9,7 +9,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #222;
+            background-color: #87CEEB; /* Sky Blue */
             position: relative;
         }
         canvas {
@@ -42,139 +42,206 @@
                 width: window.innerWidth,
                 height: window.innerHeight,
                 wireframes: false,
-                background: '#222'
+                background: '#87CEEB' // Sky Blue
             }
         });
         Render.run(render);
         const runner = Runner.create();
         Runner.run(runner, engine);
 
-        const conkerImage = new Image();
-        conkerImage.src = 'conker.png';
+        const ballRadius = 40;
+        const startX = window.innerWidth / 2;
+        const startY = 150;
+        const spacing = 100;
+        const cracks = new Map();
 
-        conkerImage.onload = () => {
-            console.log('Image loaded!'); //  Check if image is loaded
+        let conkerImage = new Image();
+        conkerImage.src = 'https://github.com/boobalootoo/conkersminigame/blob/main/output-onlinetools%20(1).png?raw=true';
 
-            const ballWidth = conkerImage.width;
-            const ballHeight = conkerImage.height;
-            const startX = window.innerWidth / 2;
-            const startY = 150;
-            const spacing = 100;
-            const cracks = new Map();
-
-            function createBall(x, y) {
-                const ball = Bodies.rectangle(x, y, ballWidth, ballHeight, {
-                    restitution: 1,
-                    density: 0.8,
-                    friction: 0.02,
-                    render: {
-                        texture: 'conker.png',
-                        xScale: 1,
-                        yScale: 1,
-                        origin: { x: 0.5, y: 0 }
+        function createBall(x, y) {
+            return Bodies.circle(x, y, ballRadius, {
+                restitution: 1,
+                density: 0.8,
+                friction: 0.02,
+                render: {
+                    strokeStyle: 'black',
+                    lineWidth: 2,
+                    sprite: {
+                        texture: conkerImage.src,
+                        xScale: 0.3,
+                        yScale: 0.3,
                     }
-                });
-                return ball;
-            }
-
-            const ballA = createBall(startX - spacing, startY);
-            const ballB = createBall(startX + spacing, startY);
-
-            const stringA = Constraint.create({
-                bodyA: ballA,
-                pointB: { x: startX - spacing, y: startY },
-                stiffness: 1,
-                length: 300
-            });
-            const stringB = Constraint.create({
-                bodyA: ballB,
-                pointB: { x: startX + spacing, y: startY },
-                stiffness: 1,
-                length: 300
-            });
-
-            World.add(world, [ballA, ballB, stringA, stringB]);
-
-            const mouse = Mouse.create(render.canvas);
-            const mouseConstraint = MouseConstraint.create(engine, {
-                mouse: mouse,
-                constraint: {
-                    stiffness: 0.2,
-                    render: { visible: false }
                 }
             });
-            World.add(world, mouseConstraint);
-            render.mouse = mouse;
+        }
 
-            function createImpactPopup(x, y, impact) {
-                if (isNaN(impact)) return;
-                const popup = document.createElement('div');
-                popup.className = 'impact-popup';
-                popup.style.left = `${x}px`;
-                popup.style.top = `${y}px`;
-                popup.innerText = `Impact: ${impact.toFixed(2)}`;
-                document.body.appendChild(popup);
-                setTimeout(() => popup.style.opacity = '0', 500);
-                setTimeout(() => popup.remove(), 1000);
+        const ballA = createBall(startX - spacing, startY + 200);
+        const ballB = createBall(startX + spacing, startY + 200);
+
+        const stringA = Constraint.create({
+            bodyA: ballA,
+            pointB: { x: startX - spacing, y: startY },
+            stiffness: 1,
+            length: 300,
+            render: {
+                strokeStyle: '#ffffff',
+                lineWidth: 2,
+                visible: true,
+            },
+            pointA: { x: 0, y: -ballRadius }
+        });
+        const stringB = Constraint.create({
+            bodyA: ballB,
+            pointB: { x: startX + spacing, y: startY },
+            stiffness: 1,
+            length: 300,
+            render: {
+                strokeStyle: '#ffffff',
+                lineWidth: 2,
+                visible: true,
+            },
+            pointA: { x: 0, y: -ballRadius }
+        });
+
+        World.add(world, [ballA, ballB, stringA, stringB]);
+
+        const mouse = Mouse.create(render.canvas);
+        const mouseConstraint = MouseConstraint.create(engine, {
+            mouse: mouse,
+            constraint: {
+                stiffness: 0.2,
+                render: { visible: false }
             }
+        });
+        World.add(world, mouseConstraint);
+        render.mouse = mouse;
 
-            function addCrack(affectedBody, impactPoint, impactStrength) {
-                if (!cracks.has(affectedBody)) cracks.set(affectedBody, []);
+        function createImpactPopup(x, y, impact) {
+            if (isNaN(impact)) return;
+            const popup = document.createElement('div');
+            popup.className = 'impact-popup';
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+            popup.innerText = `Impact: ${impact.toFixed(2)}`;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.style.opacity = '0', 500);
+            setTimeout(() => popup.remove(), 1000);
+        }
 
-                const localX = impactPoint.x - affectedBody.position.x;
-                const localY = impactPoint.y - affectedBody.position.y;
-                const depth = impactStrength / 100 * ballWidth / 2;
-                const angle = Math.atan2(localY, localX);
+        function addCrack(affectedBody, impactPoint, impactStrength) {
+            if (!cracks.has(affectedBody)) cracks.set(affectedBody, []);
 
-                cracks.get(affectedBody).push({
-                    x: localX,
-                    y: localY,
-                    depth: depth,
-                    angle: angle
+            const localX = impactPoint.x - affectedBody.position.x;
+            const localY = impactPoint.y - affectedBody.position.y;
+            const depth = impactStrength / 100 * ballRadius;
+            const angle = Math.atan2(localY, localX);
+
+            cracks.get(affectedBody).push({
+                x: localX,
+                y: localY,
+                depth: depth,
+                angle: angle
+            });
+        }
+
+        function drawCracks(ctx) {
+            cracks.forEach((crackList, body) => {
+                ctx.save();
+                ctx.translate(body.position.x, body.position.y);
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+
+                crackList.forEach(crack => {
+                    ctx.beginPath();
+                    ctx.moveTo(crack.x, crack.y);
+                    ctx.lineTo(
+                        crack.x - crack.depth * Math.cos(crack.angle),
+                        crack.y - crack.depth * Math.sin(crack.angle)
+                    );
+                    ctx.stroke();
                 });
-            }
+                ctx.restore();
+            });
+        }
 
-            function drawCracks(ctx) {
-                cracks.forEach((crackList, body) => {
+        Events.on(engine, "collisionStart", event => {
+            event.pairs.forEach(({ bodyA, bodyB, collision }) => {
+                const impact = collision.depth * 100 / ballRadius;
+                if (isNaN(impact)) return;
+                createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
+
+                let affectedBody = bodyB;
+                addCrack(affectedBody, collision.supports[0], impact);
+            });
+        });
+
+        Events.on(render, "afterRender", () => {
+            const ctx = render.context;
+            const bodies = World.bodies;
+
+            // First, draw the strings
+            bodies.forEach(body => {
+                if (body.type === 'constraint') {
+                    const constraint = body;
+                    if (constraint.render.visible) {
+                        ctx.save();
+                        ctx.strokeStyle = constraint.render.strokeStyle;
+                        ctx.lineWidth = constraint.render.lineWidth;
+                        const startPoint = constraint.pointA ? {
+                            x: constraint.bodyA.position.x + constraint.pointA.x,
+                            y: constraint.bodyA.position.y + constraint.pointA.y
+                        } : constraint.bodyA.position;
+                        const endPoint = constraint.pointB ? constraint.pointB : constraint.bodyB.position;
+
+                        ctx.beginPath();
+                        ctx.moveTo(startPoint.x, startPoint.y);
+                        ctx.lineTo(endPoint.x, endPoint.y);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            });
+
+            // Then, draw the conkers
+            bodies.forEach(body => {
+                if (body.label === 'Circle') {
                     ctx.save();
                     ctx.translate(body.position.x, body.position.y);
-                    ctx.strokeStyle = 'black';
-                    ctx.lineWidth = 2;
+                    ctx.rotate(body.angle);
 
-                    crackList.forEach(crack => {
-                        ctx.beginPath();
-                        ctx.moveTo(crack.x, crack.y);
-                        ctx.lineTo(
-                            crack.x - crack.depth * Math.cos(crack.angle),
-                            crack.y - crack.depth * Math.sin(crack.angle)
-                        );
-                        ctx.stroke();
-                    });
+                    const sprite = body.render.sprite;
+                    if (sprite && sprite.texture) {
+                        const img = new Image();
+                        img.src = sprite.texture;
+                         img.onload = () => {
+                            ctx.drawImage(
+                                img,
+                                -ballRadius * sprite.xScale,
+                                -ballRadius * sprite.yScale,
+                                ballRadius * 2 * sprite.xScale,
+                                ballRadius * 2 * sprite.yScale
+                            );
+                        }
+                        if(img.complete){
+                            ctx.drawImage(
+                                img,
+                                -ballRadius * sprite.xScale,
+                                -ballRadius * sprite.yScale,
+                                ballRadius * 2 * sprite.xScale,
+                                ballRadius * 2 * sprite.yScale
+                            );
+                        }
+                    }
                     ctx.restore();
-                });
-            }
-
-            Events.on(engine, "collisionStart", event => {
-                event.pairs.forEach(({ bodyA, bodyB, collision }) => {
-                    const impact = collision.depth * 100 / (ballWidth / 2);
-                    if (isNaN(impact)) return;
-                    createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
-
-                    let affectedBody = bodyB;
-                    addCrack(affectedBody, collision.supports[0], impact);
-                });
+                }
             });
+            drawCracks(ctx);
+        });
 
-            Events.on(render, "afterRender", () => {
-                const ctx = render.context;
-                drawCracks(ctx);
-            });
-
-            Render.lookAt(render, {
-                min: { x: 0, y: 0 },
-                max: { x: window.innerWidth, y: window.innerHeight }
-            });
-        };
+        Render.lookAt(render, {
+            min: { x: 0, y: 0 },
+            max: { x: window.innerWidth, y: window.innerHeight }
+        });
     </script>
 </body>
 </html>
