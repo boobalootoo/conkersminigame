@@ -164,77 +164,28 @@
             });
         }
 
+        // Load Wooden Impact Sound
+        const woodHitSound = new Audio("https://raw.githubusercontent.com/boobalootoo/conkersminigame/main/44077_therealisa_wood%20(online-audio-converter.com).mp3");
+
         Events.on(engine, "collisionStart", event => {
             event.pairs.forEach(({ bodyA, bodyB, collision }) => {
                 const impact = collision.depth * 100 / ballRadius;
                 if (isNaN(impact)) return;
-                createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
 
-                let affectedBody = bodyB;
-                addCrack(affectedBody, collision.supports[0], impact);
+                createImpactPopup(collision.supports[0].x, collision.supports[0].y, impact);
+                addCrack(bodyB, collision.supports[0], impact);
+
+                // Play sound effect based on impact strength
+                if (impact > 1) {
+                    woodHitSound.currentTime = 0; // Restart sound
+                    woodHitSound.volume = Math.min(1, impact / 10); // Adjust volume dynamically
+                    woodHitSound.play().catch(err => console.error("Audio play error:", err));
+                }
             });
         });
 
         Events.on(render, "afterRender", () => {
             const ctx = render.context;
-            const bodies = World.bodies;
-
-            // First, draw the strings
-            bodies.forEach(body => {
-                if (body.type === 'constraint') {
-                    const constraint = body;
-                    if (constraint.render.visible) {
-                        ctx.save();
-                        ctx.strokeStyle = constraint.render.strokeStyle;
-                        ctx.lineWidth = constraint.render.lineWidth;
-                        const startPoint = constraint.pointA ? {
-                            x: constraint.bodyA.position.x + constraint.pointA.x,
-                            y: constraint.bodyA.position.y + constraint.pointA.y
-                        } : constraint.bodyA.position;
-                        const endPoint = constraint.pointB ? constraint.pointB : constraint.bodyB.position;
-
-                        ctx.beginPath();
-                        ctx.moveTo(startPoint.x, startPoint.y);
-                        ctx.lineTo(endPoint.x, endPoint.y);
-                        ctx.stroke();
-                        ctx.restore();
-                    }
-                }
-            });
-
-            // Then, draw the conkers
-            bodies.forEach(body => {
-                if (body.label === 'Circle') {
-                    ctx.save();
-                    ctx.translate(body.position.x, body.position.y);
-                    ctx.rotate(body.angle);
-
-                    const sprite = body.render.sprite;
-                    if (sprite && sprite.texture) {
-                        const img = new Image();
-                        img.src = sprite.texture;
-                         img.onload = () => {
-                            ctx.drawImage(
-                                img,
-                                -ballRadius * sprite.xScale,
-                                -ballRadius * sprite.yScale,
-                                ballRadius * 2 * sprite.xScale,
-                                ballRadius * 2 * sprite.yScale
-                            );
-                        }
-                        if(img.complete){
-                            ctx.drawImage(
-                                img,
-                                -ballRadius * sprite.xScale,
-                                -ballRadius * sprite.yScale,
-                                ballRadius * 2 * sprite.xScale,
-                                ballRadius * 2 * sprite.yScale
-                            );
-                        }
-                    }
-                    ctx.restore();
-                }
-            });
             drawCracks(ctx);
         });
 
